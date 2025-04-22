@@ -46,6 +46,7 @@ final class CodeActionProvider(
     new MillifyDependencyCodeAction(buffers),
     new MillifyScalaCliDependencyCodeAction(buffers),
     new ConvertCommentCodeAction(buffers),
+    new RemoveInvalidImport(trees),
   )
 
   def actionsForParams(params: l.CodeActionParams): List[CodeAction] = {
