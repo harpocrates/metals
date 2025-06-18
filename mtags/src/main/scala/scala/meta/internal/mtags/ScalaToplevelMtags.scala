@@ -184,13 +184,14 @@ class ScalaToplevelMtags(
     def needEmitMember(region: Region): Boolean =
       includeInnerClasses || region.acceptMembers
 
-    def needEmitTermMember(): Boolean =
-      includeMembers && !prevWasDot
+    def needEmitTermMember(region: Region): Boolean =
+      (includeMembers || region.termOwner.endsWith("/package.")) && !prevWasDot
 
     def srcName = input.filename.stripSuffix(".scala")
 
     if (!isDone) {
       val data = curr
+      val dataStr = data.strVal
       val currRegion =
         if (dialect.allowSignificantIndentation) {
           data.token match {
@@ -312,8 +313,8 @@ class ScalaToplevelMtags(
               loop(indent.notAfterNewline, currRegion, None)
           }
         case DEF | VAL | VAR | GIVEN | TYPE
-            if dialect.allowToplevelStatements &&
-              needEmitFileOwner(currRegion) =>
+            if (dialect.allowToplevelStatements &&
+              needEmitFileOwner(currRegion)) =>
           val pos = newPosition
           val name = s"$srcName$$package"
           val owner = withOwner(currRegion.owner) {
@@ -333,7 +334,7 @@ class ScalaToplevelMtags(
               )
             else region.isImplicit
           withOwner(currRegion.termOwner) {
-            emitTerm(currRegion, isImplicit, needEmitTermMember())
+            emitTerm(currRegion, isImplicit, needEmitTermMember(currRegion))
           }
           val newIndent = parseMemberDefinitionLhs(t, indent)
           loop(
@@ -344,7 +345,7 @@ class ScalaToplevelMtags(
         case TYPE if expectTemplate.map(!_.isExtension).getOrElse(true) =>
           if (needEmitMember(currRegion) && !prevWasDot) {
             withOwner(currRegion.termOwner) {
-              emitType(needEmitTermMember())
+              emitType(needEmitTermMember(currRegion))
             }
           } else scanner.mtagsNextToken()
           loop(indent.notAfterNewline, currRegion, newExpectIgnoreBody)
@@ -1313,7 +1314,7 @@ object ScalaToplevelMtags {
           isImplicit: Boolean
       ) = this(owner, prev, extension, owner, isImplicit)
       def acceptMembers: Boolean =
-        owner.endsWith("/")
+        owner.endsWith("/") || owner.endsWith("/package.")
 
       override def isExtension = extension
 
